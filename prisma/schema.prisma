@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id       String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  password_hash     String
+  is_active         Boolean   @default(true)
+  reset_otp         String?
+  reset_otp_expires DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  profile         Profile?
+  preference      Preference?
+  food_history    FoodHistory[]
+  recommendations Recommendation[]
+  notifications   Notification[]
+
+  @@map("users")
+}
+
+model Profile {
+  profile_id String   @id @default(uuid())
+  user_id    String   @unique
+  age        Int
+  weight_kg  Float
+  height_cm  Float
+  gender     String
+  goal       String
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Preference {
+  pref_id      String   @id @default(uuid())
+  user_id      String   @unique
+  diet_type    String
+  daily_budget Float
+  currency     String   @default("IDR")
+  created_at   DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("preferences")
+}
+
+model Food {
+  food_id        String  @id @default(uuid())
+  name           String
+  calories       Float
+  protein_g      Float
+  carbs_g        Float
+  fat_g          Float
+  price_estimate Float
+  category       String
+  source         String
+  image_url      String?
+
+  recipe       Recipe?
+  food_history FoodHistory[]
+  rec_foods    RecFood[]
+
+  @@map("foods")
+}
+
+model Recipe {
+  recipe_id     String @id @default(uuid())
+  food_id       String @unique
+  ingredients   String 
+  steps         String 
+  prep_time_min Int
+
+  food Food @relation(fields: [food_id], references: [food_id], onDelete: Cascade)
+
+  @@map("recipes")
+}
+
+model FoodHistory {
+  history_id  String   @id @default(uuid())
+  user_id     String
+  food_id     String
+  consumed_at DateTime @default(now())
+  qty_gram    Float
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  food Food @relation(fields: [food_id], references: [food_id], onDelete: Cascade)
+
+  @@map("food_history")
+}
+
+model Recommendation {
+  rec_id         String   @id @default(uuid())
+  user_id        String
+  total_calories Float
+  generated_at   DateTime @default(now())
+
+  user      User      @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+  rec_foods RecFood[]
+
+  @@map("recommendations")
+}
+
+model RecFood {
+  rec_food_id String @id @default(uuid())
+  rec_id      String
+  food_id     String
+
+  recommendation Recommendation @relation(fields: [rec_id], references: [rec_id], onDelete: Cascade)
+  food           Food           @relation(fields: [food_id], references: [food_id], onDelete: Cascade)
+
+  @@map("rec_foods")
+}
+
+model Notification {
+  notif_id     String   @id @default(uuid())
+  user_id      String
+  type         String
+  message      String
+  scheduled_at DateTime
+  is_sent      Boolean  @default(false)
+  created_date DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Article {
+  article_id   String   @id @default(uuid())
+  title        String
+  content      String
+  category     String
+  image_url    String?
+  published_at DateTime @default(now())
+
+  @@map("articles")
+}

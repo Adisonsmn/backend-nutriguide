@@ -1,0 +1,229 @@
+Saya sedang membangun backend "Nutri Guide" dengan stack:
+- Express.js + TypeScript
+- PostgreSQL
+- Prisma ORM
+- ES Module (bukan CommonJS)
+
+=============================================================
+PENTING: GUNAKAN ES MODULE
+=============================================================
+Semua konfigurasi harus menggunakan ES Module, bukan CommonJS:
+
+package.json:
+- Tambahkan "type": "module"
+- Scripts menggunakan tsx (bukan ts-node) untuk dev
+- Build menggunakan tsc
+
+tsconfig.json:
+- "module": "ESNext"
+- "moduleResolution": "bundler" atau "NodeNext"
+- "target": "ES2020"
+
+Import syntax di semua file .ts:
+- Gunakan import/export (bukan require/module.exports)
+- Sertakan ekstensi .js di setiap local import
+  Contoh: import { userRouter } from './routes/user.js'
+
+=============================================================
+STRUKTUR FOLDER
+=============================================================
+backend/
+├── prisma/
+│   └── schema.prisma
+├── src/
+│   ├── controllers/
+│   ├── middlewares/
+│   ├── routes/
+│   ├── services/
+│   ├── models/
+│   │   └── prisma.ts       ← Prisma client singleton
+│   └── index.ts
+├── Dockerfile
+├── tsconfig.json
+└── package.json
+
+=============================================================
+TAHAP 1 — Update Konfigurasi ke ES Module
+=============================================================
+Update file berikut agar kompatibel ES Module:
+
+1. package.json
+   - "type": "module"
+   - dependencies  : express, dotenv, cors, helmet, morgan, 
+                     @prisma/client
+   - devDependencies: typescript, tsx, nodemon, prisma,
+                      @types/express, @types/node, 
+                      @types/cors, @types/morgan
+   - scripts:
+     - "dev"        : nodemon --exec tsx src/index.ts
+     - "build"      : tsc
+     - "start"      : node dist/index.js
+     - "type-check" : tsc --noEmit
+     - "db:generate": prisma generate
+     - "db:migrate" : prisma migrate dev
+     - "db:studio"  : prisma studio
+     - "db:seed"    : tsx prisma/seed.ts
+
+2. tsconfig.json
+   - target          : ES2020
+   - module          : ESNext
+   - moduleResolution: bundler
+   - outDir          : ./dist
+   - rootDir         : ./src
+   - strict          : true
+   - esModuleInterop : true
+   - skipLibCheck    : true
+
+=============================================================
+TAHAP 2 — Prisma Schema
+=============================================================
+Buatkan prisma/schema.prisma lengkap berdasarkan ERD berikut:
+
+------------------------------------------------------------
+TABEL & KOLOM
+------------------------------------------------------------
+
+USERS
+- user_id     : String @id @default(uuid())
+- name        : String
+- email       : String @unique
+- password_hash: String
+- is_active   : Boolean @default(true)
+- created_at  : DateTime @default(now())
+- updated_at  : DateTime @updatedAt
+
+PROFILES
+- profile_id  : String @id @default(uuid())
+- user_id     : String @unique (FK → USERS)
+- age         : Int
+- weight_kg   : Float
+- height_cm   : Float
+- gender      : String
+- goal        : String
+- updated_at  : DateTime @updatedAt
+
+PREFERENCES
+- pref_id     : String @id @default(uuid())
+- user_id     : String @unique (FK → USERS)
+- diet_type   : String
+- daily_budget: Float
+- currency    : String @default("IDR")
+- created_at  : DateTime @default(now())
+
+FOODS
+- food_id       : String @id @default(uuid())
+- name          : String
+- calories      : Float
+- protein_g     : Float
+- carbs_g       : Float
+- fat_g         : Float
+- price_estimate: Float
+- category      : String
+- source        : String
+
+RECIPES
+- recipe_id    : String @id @default(uuid())
+- food_id      : String @unique (FK → FOODS)
+- ingredients  : String (text)
+- steps        : String (text)
+- prep_time_min: Int
+
+FOOD_HISTORY
+- history_id  : String @id @default(uuid())
+- user_id     : String (FK → USERS)
+- food_id     : String (FK → FOODS)
+- consumed_at : DateTime @default(now())
+- qty_gram    : Float
+
+RECOMMENDATIONS
+- rec_id        : String @id @default(uuid())
+- user_id       : String (FK → USERS)
+- total_calories: Float
+- generated_at  : DateTime @default(now())
+
+REC_FOODS (junction table RECOMMENDATIONS ↔ FOODS)
+- rec_food_id : String @id @default(uuid())
+- rec_id      : String (FK → RECOMMENDATIONS)
+- food_id     : String (FK → FOODS)
+
+NOTIFICATIONS
+- notif_id    : String @id @default(uuid())
+- user_id     : String (FK → USERS)
+- type        : String
+- message     : String
+- scheduled_at: DateTime
+- is_sent     : Boolean @default(false)
+- created_date: DateTime @default(now())
+
+ARTICLES
+- article_id  : String @id @default(uuid())
+- title       : String
+- content     : String (text)
+- category    : String
+- published_at: DateTime @default(now())
+
+------------------------------------------------------------
+RELASI ANTAR TABEL (sesuai ERD)
+------------------------------------------------------------
+- USERS → PROFILES         : one-to-one
+- USERS → PREFERENCES      : one-to-one
+- USERS → FOOD_HISTORY     : one-to-many
+- USERS → RECOMMENDATIONS  : one-to-many
+- USERS → NOTIFICATIONS    : one-to-many
+- FOODS → RECIPES          : one-to-one
+- FOODS → FOOD_HISTORY     : one-to-many
+- FOODS → REC_FOODS        : one-to-many
+- RECOMMENDATIONS → REC_FOODS : one-to-many
+
+------------------------------------------------------------
+CATATAN SCHEMA
+------------------------------------------------------------
+- Semua @id menggunakan UUID
+- Gunakan @@map() untuk nama tabel snake_case di DB
+  Contoh: @@map("users"), @@map("food_history")
+- Sertakan relasi dua arah (fields & references) 
+  yang lengkap di setiap model
+- Generator client menggunakan provider "prisma-client-js"
+- Datasource db menggunakan provider "postgresql" 
+  dengan url dari env("DATABASE_URL")
+
+=============================================================
+TAHAP 3 — Prisma Client Singleton (ES Module)
+=============================================================
+Buatkan src/models/prisma.ts dengan:
+- Import PrismaClient menggunakan ES Module syntax
+- Export single instance sebagai default export
+- Handle graceful shutdown on SIGINT dan SIGTERM
+- Tambahkan log: ['error', 'warn'] untuk production
+
+=============================================================
+TAHAP 4 — Update src/index.ts
+=============================================================
+Update entry point dengan ES Module:
+- Import semua dependency dengan ES Module syntax
+- Import prisma client dari ./models/prisma.js
+- Test koneksi database saat startup dengan 
+  prisma.$connect()
+- Jika koneksi gagal, log error dan process.exit(1)
+- Middleware: cors, helmet, morgan, express.json()
+- GET /health → return status, timestamp, db: "connected"
+- Graceful shutdown: tutup prisma saat server stop
+
+=============================================================
+OUTPUT YANG DIHARAPKAN
+=============================================================
+Berikan semua file lengkap dan siap:
+1. package.json
+2. tsconfig.json
+3. prisma/schema.prisma
+4. src/models/prisma.ts
+5. src/index.ts
+
+Sertakan juga urutan command setup:
+1. Install dependencies
+2. Generate Prisma client
+3. Jalankan migration pertama
+4. Verifikasi koneksi berhasil
+
+Pastikan semua import menggunakan ekstensi .js 
+dan tidak ada syntax require() di mana pun.
