@@ -1,19 +1,16 @@
-FROM node:24-alpine
+FROM node:24-slim
 
 WORKDIR /app
 
-# Install dependencies
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
 RUN npm install
 
-# Copy prisma schema & generate client
 COPY prisma ./prisma
 RUN npx prisma generate
 
-# Copy semua source code
 COPY . .
-
-# Build TypeScript
 RUN npm run build
 
 EXPOSE 3000
