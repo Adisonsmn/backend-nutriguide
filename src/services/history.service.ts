@@ -1,5 +1,6 @@
 import prisma from '../models/prisma.js';
 import { nutritionService } from './nutrition.service.js';
+import { generateId } from '../utils/idGenerator.js';
 
 export const historyService = {
   async addHistory(userId: string, foodId: string, qtyGram: number, consumedAt?: string) {
@@ -9,8 +10,11 @@ export const historyService = {
       throw Object.assign(new Error('Food not found'), { statusCode: 404 });
     }
 
+    const history_id = await generateId('HIST', 'food_history', 'history_id');
+
     return prisma.foodHistory.create({
       data: {
+        history_id,
         user_id: userId,
         food_id: foodId,
         qty_gram: qtyGram,

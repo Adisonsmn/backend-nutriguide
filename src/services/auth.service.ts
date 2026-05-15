@@ -1,6 +1,7 @@
 import prisma from '../models/prisma.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { generateId } from '../utils/idGenerator.js';
 
 const SALT_ROUNDS = 10;
 
@@ -15,9 +16,10 @@ export const authService = {
     }
 
     const password_hash = await bcrypt.hash(password, SALT_ROUNDS);
+    const user_id = await generateId('USER', 'users', 'user_id');
 
     const user = await prisma.user.create({
-      data: { name, email, password_hash },
+      data: { user_id, name, email, password_hash },
       select: {
         user_id: true,
         name: true,

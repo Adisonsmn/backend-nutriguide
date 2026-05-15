@@ -8,7 +8,7 @@ datasource db {
 }
 
 model User {
-  user_id       String    @id @default(uuid())
+  user_id       String    @id
   name          String
   email         String    @unique
   password_hash     String
@@ -28,7 +28,7 @@ model User {
 }
 
 model Profile {
-  profile_id String   @id @default(uuid())
+  profile_id String   @id
   user_id    String   @unique
   age        Int
   weight_kg  Float
@@ -43,7 +43,7 @@ model Profile {
 }
 
 model Preference {
-  pref_id      String   @id @default(uuid())
+  pref_id      String   @id
   user_id      String   @unique
   diet_type    String
   daily_budget Float
@@ -56,7 +56,7 @@ model Preference {
 }
 
 model Food {
-  food_id        String  @id @default(uuid())
+  food_id        String  @id
   name           String
   calories       Float
   protein_g      Float
@@ -75,7 +75,7 @@ model Food {
 }
 
 model Recipe {
-  recipe_id     String @id @default(uuid())
+  recipe_id     String @id
   food_id       String @unique
   ingredients   String 
   steps         String 
@@ -87,7 +87,7 @@ model Recipe {
 }
 
 model FoodHistory {
-  history_id  String   @id @default(uuid())
+  history_id  String   @id
   user_id     String
   food_id     String
   consumed_at DateTime @default(now())
@@ -100,7 +100,7 @@ model FoodHistory {
 }
 
 model Recommendation {
-  rec_id         String   @id @default(uuid())
+  rec_id         String   @id
   user_id        String
   total_calories Float
   generated_at   DateTime @default(now())
@@ -112,7 +112,7 @@ model Recommendation {
 }
 
 model RecFood {
-  rec_food_id String @id @default(uuid())
+  rec_food_id String @id
   rec_id      String
   food_id     String
 
@@ -123,7 +123,7 @@ model RecFood {
 }
 
 model Notification {
-  notif_id     String   @id @default(uuid())
+  notif_id     String   @id
   user_id      String
   type         String
   message      String
@@ -137,7 +137,7 @@ model Notification {
 }
 
 model Article {
-  article_id   String   @id @default(uuid())
+  article_id   String   @id
   title        String
   content      String
   category     String

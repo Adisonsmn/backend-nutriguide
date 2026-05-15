@@ -1,4 +1,5 @@
 import prisma from '../models/prisma.js';
+import { generateId } from '../utils/idGenerator.js';
 
 export const notificationService = {
   async getSettings(userId: string) {
@@ -9,8 +10,11 @@ export const notificationService = {
   },
 
   async upsertSettings(userId: string, type: string, message: string, scheduledAt: string) {
+    const notif_id = await generateId('NOTF', 'notifications', 'notif_id');
+
     return prisma.notification.create({
       data: {
+        notif_id,
         user_id: userId,
         type,
         message,

@@ -1,5 +1,6 @@
 import prisma from '../models/prisma.js';
 import { nutritionService } from './nutrition.service.js';
+import { generateId } from '../utils/idGenerator.js';
 
 export const recommendationService = {
   async getRecommendations(userId: string, budget?: number, preference?: string) {
@@ -103,12 +104,22 @@ export const recommendationService = {
       };
     }
 
+    const rec_id = await generateId('RECO', 'recommendations', 'rec_id');
+
+    // Generate unique IDs for each rec_food entry
+    const recFoodEntries = [];
+    for (const food of allSelectedFoods) {
+      const rec_food_id = await generateId('RCFD', 'rec_foods', 'rec_food_id');
+      recFoodEntries.push({ rec_food_id, food_id: food.food_id });
+    }
+
     const recommendation = await prisma.recommendation.create({
       data: {
+        rec_id,
         user_id: userId,
         total_calories: totalCalories,
         rec_foods: {
-          create: allSelectedFoods.map((food) => ({ food_id: food.food_id })),
+          create: recFoodEntries,
         },
       },
     });

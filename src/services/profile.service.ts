@@ -1,4 +1,5 @@
 import prisma from '../models/prisma.js';
+import { generateId } from '../utils/idGenerator.js';
 
 interface CreateProfileData {
   age: number;
@@ -29,8 +30,10 @@ export const profileService = {
       throw Object.assign(new Error('Profile already exists'), { statusCode: 409 });
     }
 
+    const profile_id = await generateId('PROF', 'profiles', 'profile_id');
+
     return prisma.profile.create({
-      data: { user_id: userId, ...data },
+      data: { profile_id, user_id: userId, ...data },
     });
   },
 
@@ -61,10 +64,12 @@ export const profileService = {
   },
 
   async upsertPreferences(userId: string, data: UpsertPreferencesData) {
+    const pref_id = await generateId('PREF', 'preferences', 'pref_id');
+
     return prisma.preference.upsert({
       where: { user_id: userId },
       update: data,
-      create: { user_id: userId, ...data },
+      create: { pref_id, user_id: userId, ...data },
     });
   },
 };
