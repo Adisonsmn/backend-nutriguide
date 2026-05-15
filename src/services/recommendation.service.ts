@@ -1,6 +1,7 @@
 import prisma from '../models/prisma.js';
 import { nutritionService } from './nutrition.service.js';
 import { generateId } from '../utils/idGenerator.js';
+import { notificationService } from './notification.service.js';
 
 export const recommendationService = {
   async getRecommendations(userId: string, budget?: number, preference?: string) {
@@ -132,6 +133,11 @@ export const recommendationService = {
         },
       },
     });
+
+    // Fire-and-forget notification
+    notificationService.createNotification(
+      userId, 'recommendation', 'New meal plan generated for you! 🥗'
+    ).catch(() => {});
 
     return {
       recommendation_id: recommendation.rec_id,

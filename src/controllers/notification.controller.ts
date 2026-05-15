@@ -2,13 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { notificationService } from '../services/notification.service.js';
 
 export const notificationController = {
-  async getSettings(req: Request, res: Response, next: NextFunction) {
+  async getNotifications(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
-      const notifications = await notificationService.getSettings(userId);
+      const notifications = await notificationService.getNotifications(userId);
       res.status(200).json({
         status: 'success',
-        message: 'Notification settings retrieved successfully',
+        message: 'Notifications retrieved successfully',
         data: notifications,
       });
     } catch (error) {
@@ -16,48 +16,28 @@ export const notificationController = {
     }
   },
 
-  async updateSettings(req: Request, res: Response, next: NextFunction) {
+  async getUnreadCount(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
-      const { type, message, scheduled_at } = req.body;
-      const notification = await notificationService.upsertSettings(
-        userId,
-        type,
-        message,
-        scheduled_at
-      );
+      const count = await notificationService.getUnreadCount(userId);
       res.status(200).json({
         status: 'success',
-        message: 'Notification settings updated successfully',
-        data: notification,
+        message: 'Unread count retrieved',
+        data: { count },
       });
     } catch (error) {
       next(error);
     }
   },
 
-  async getDailyNotifications(req: Request, res: Response, next: NextFunction) {
+  async markAsRead(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
-      const notifications = await notificationService.getDailyNotifications(userId);
+      const { notifId } = req.params;
+      await notificationService.markAsRead(notifId, userId);
       res.status(200).json({
         status: 'success',
-        message: 'Daily notifications retrieved successfully',
-        data: notifications,
-      });
-    } catch (error) {
-      next(error);
-    }
-  },
-
-  async saveDeviceToken(req: Request, res: Response, next: NextFunction) {
-    try {
-      const userId = req.user!.userId;
-      const { device_token, platform } = req.body;
-      const result = await notificationService.saveDeviceToken(userId, device_token, platform);
-      res.status(201).json({
-        status: 'success',
-        message: result.message,
+        message: 'Notification marked as read',
         data: null,
       });
     } catch (error) {
@@ -65,13 +45,13 @@ export const notificationController = {
     }
   },
 
-  async deleteDeviceToken(req: Request, res: Response, next: NextFunction) {
+  async markAllAsRead(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
-      const result = await notificationService.deleteDeviceToken(userId);
+      await notificationService.markAllAsRead(userId);
       res.status(200).json({
         status: 'success',
-        message: result.message,
+        message: 'All notifications marked as read',
         data: null,
       });
     } catch (error) {

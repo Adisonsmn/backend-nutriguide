@@ -1,5 +1,6 @@
 import prisma from '../models/prisma.js';
 import { generateId } from '../utils/idGenerator.js';
+import { notificationService } from './notification.service.js';
 
 interface CreateProfileData {
   age: number;
@@ -32,9 +33,15 @@ export const profileService = {
 
     const profile_id = await generateId('PROF', 'profiles', 'profile_id');
 
-    return prisma.profile.create({
+    const profile = await prisma.profile.create({
       data: { profile_id, user_id: userId, ...data },
     });
+
+    notificationService.createNotification(
+      userId, 'profile', 'Your profile has been set up successfully! ✅'
+    ).catch(() => {});
+
+    return profile;
   },
 
   async getProfile(userId: string) {
@@ -51,10 +58,16 @@ export const profileService = {
   },
 
   async updateProfile(userId: string, data: UpdateProfileData) {
-    return prisma.profile.update({
+    const profile = await prisma.profile.update({
       where: { user_id: userId },
       data,
     });
+
+    notificationService.createNotification(
+      userId, 'profile', 'Profile updated successfully ✅'
+    ).catch(() => {});
+
+    return profile;
   },
 
   async getPreferences(userId: string) {

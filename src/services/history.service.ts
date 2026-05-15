@@ -1,6 +1,7 @@
 import prisma from '../models/prisma.js';
 import { nutritionService } from './nutrition.service.js';
 import { generateId } from '../utils/idGenerator.js';
+import { notificationService } from './notification.service.js';
 
 export const historyService = {
   async addHistory(userId: string, foodId: string, qtyGram: number, consumedAt?: string) {
@@ -12,7 +13,7 @@ export const historyService = {
 
     const history_id = await generateId('HIST', 'food_history', 'history_id');
 
-    return prisma.foodHistory.create({
+    const entry = await prisma.foodHistory.create({
       data: {
         history_id,
         user_id: userId,
@@ -22,6 +23,12 @@ export const historyService = {
       },
       include: { food: true },
     });
+
+    notificationService.createNotification(
+      userId, 'history', `Added "${food.name}" to your food history 🍽️`
+    ).catch(() => {});
+
+    return entry;
   },
 
   async getHistory(userId: string, date?: string) {

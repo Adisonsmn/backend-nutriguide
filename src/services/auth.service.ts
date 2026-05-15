@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateId } from '../utils/idGenerator.js';
 import { sendOtpEmail } from '../utils/email.js';
+import { notificationService } from './notification.service.js';
 
 const SALT_ROUNDS = 10;
 
@@ -58,6 +59,12 @@ export const authService = {
     refreshTokens.add(refreshToken);
 
     const { password_hash, ...userData } = user;
+
+    // Fire-and-forget notification
+    notificationService.createNotification(
+      user.user_id, 'login', `Welcome back, ${user.name}!`
+    ).catch(() => {});
+
     return { accessToken, refreshToken, user: userData };
   },
 
@@ -151,6 +158,11 @@ export const authService = {
         reset_otp_expires: null,
       },
     });
+
+    // Fire-and-forget notification
+    notificationService.createNotification(
+      user.user_id, 'password', 'Your password has been changed successfully'
+    ).catch(() => {});
 
     return { message: 'Password reset successfully' };
   },
