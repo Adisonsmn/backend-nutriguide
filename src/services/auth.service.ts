@@ -2,6 +2,7 @@ import prisma from '../models/prisma.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { generateId } from '../utils/idGenerator.js';
+import { sendOtpEmail } from '../utils/email.js';
 
 const SALT_ROUNDS = 10;
 
@@ -106,8 +107,15 @@ export const authService = {
       },
     });
 
-    // In a real app, send this OTP via email. For the assignment, we just return it.
-    return { otp, message: 'OTP generated and saved. Use this OTP to reset your password.' };
+    // Send OTP via email
+    try {
+      await sendOtpEmail(email, otp);
+      return { message: 'OTP has been sent to your email address.' };
+    } catch (emailError) {
+      console.error('[ForgotPassword] Failed to send email:', emailError);
+      // Fallback: still return OTP for development/testing
+      return { otp, message: 'Email sending failed. OTP returned for development.' };
+    }
   },
 
   async resetPassword(email: string, otp: string, newPassword: string) {
@@ -122,6 +130,15 @@ export const authService = {
 
     if (!user.reset_otp_expires || user.reset_otp_expires < new Date()) {
       throw Object.assign(new Error('OTP has expired'), { statusCode: 400 });
+    }
+
+    // Validate new password is different from old password
+    const isSamePassword = await bcrypt.compare(newPassword, user.password_hash);
+    if (isSamePassword) {
+      throw Object.assign(
+        new Error('New password must be different from your current password'),
+        { statusCode: 400 }
+      );
     }
 
     const password_hash = await bcrypt.hash(newPassword, SALT_ROUNDS);

@@ -16,6 +16,7 @@ export const recommendationController = {
       });
     } catch (error: unknown) {
       const err = error as Error & { statusCode?: number };
+      console.error('[RecommendationController] Error:', err.message, err.stack);
       if (err.statusCode) {
         res.status(err.statusCode).json({
           status: 'error',

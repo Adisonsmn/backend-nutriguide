@@ -140,5 +140,5 @@ INSERT INTO articles (article_id, title, content, category, image_url, published
  'The Gut-Brain Connection: How Food Affects Your Mood',
  'Your gut is often called the "second brain" because it produces about 95% of your body''s serotonin — the neurotransmitter responsible for mood regulation. The gut microbiome, consisting of trillions of bacteria, plays a crucial role in this connection. To support a healthy gut, eat prebiotic foods (garlic, onions, bananas, asparagus) that feed beneficial bacteria, and probiotic foods (yogurt, kimchi, tempeh, kefir) that introduce good bacteria. A diet high in processed foods, sugar, and artificial sweeteners can damage the gut microbiome, leading to inflammation that affects mental health. Research has linked poor gut health to increased rates of anxiety and depression. Fiber is essential — aim for 25-30 grams daily from vegetables, fruits, whole grains, and legumes. Fermented Indonesian foods like tempe and tape are excellent natural probiotics. Making small dietary changes to support your gut can have a noticeable impact on your mood within just a few weeks.',
  'Wellness',
- 'https://images.unsplash.com/photo-1505576399279-0d754c0d8a04?w=400',
+ 'https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=400',
  '2026-05-15T10:00:00Z');
