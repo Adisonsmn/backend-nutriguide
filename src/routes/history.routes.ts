@@ -7,7 +7,7 @@ import { z } from 'zod';
 const router = Router();
 
 const addHistorySchema = z.object({
-  food_id: z.string().uuid('Invalid food ID'),
+  food_id: z.string().min(1, 'Food ID is required'),
   qty_gram: z.number().positive('Quantity must be positive'),
   consumed_at: z.string().datetime().optional(),
 });
