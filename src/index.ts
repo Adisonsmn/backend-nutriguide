@@ -3,20 +3,38 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import prisma from './models/prisma.js';
 import { registerRoutes } from './routes/index.js';
 import { errorHandler } from './middlewares/error.middleware.js';
+import { startScheduler } from './utils/scheduler.js';
 
 dotenv.config();
+
+// Bug #18: Validate required environment variables before starting
+const requiredEnv = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'DATABASE_URL'];
+for (const key of requiredEnv) {
+  if (!process.env[key]) {
+    console.error(`❌ Missing required env var: ${key}`);
+    process.exit(1);
+  }
+}
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+// Bug #7: Restrict CORS to the frontend origin instead of allowing any origin
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true,
+}));
 app.use(helmet());
-app.use(morgan('dev'));
+// Bug #17: Use 'combined' format in production, 'dev' in development
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use(express.json());
+// Bug #8: Parse cookies so the refresh token cookie is available on req.cookies
+app.use(cookieParser());
 
 // Register all routes
 registerRoutes(app);
@@ -47,6 +65,8 @@ const startServer = async () => {
     const server = app.listen(port, () => {
       console.log(`🚀 Server is running on port ${port}`);
       console.log(`📋 Health check: http://localhost:${port}/health`);
+      // Start scheduled cron jobs (meal reminders + daily motivation)
+      startScheduler();
     });
 
     // Graceful Shutdown for HTTP server

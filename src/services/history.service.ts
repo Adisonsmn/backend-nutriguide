@@ -70,17 +70,27 @@ export const historyService = {
     });
   },
 
-  async getSummary(userId: string) {
-    const today = new Date();
-    const startOfDay = new Date(today);
+  async getSummary(userId: string, timezoneOffset?: number) {
+    // Bug #28: Use client timezone offset to compute "today" correctly
+    // timezoneOffset is in minutes from UTC (e.g., 420 for WIB/UTC+7)
+    const now = new Date();
+    const offsetMs = (timezoneOffset ?? 0) * 60 * 1000;
+
+    // Shift 'now' to the user's local time for date boundary calculation
+    const userNow = new Date(now.getTime() + offsetMs);
+    const startOfDay = new Date(userNow);
     startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(today);
+    const endOfDay = new Date(userNow);
     endOfDay.setHours(23, 59, 59, 999);
+
+    // Shift back to UTC for the DB query
+    const startUtc = new Date(startOfDay.getTime() - offsetMs);
+    const endUtc = new Date(endOfDay.getTime() - offsetMs);
 
     const todayHistory = await prisma.foodHistory.findMany({
       where: {
         user_id: userId,
-        consumed_at: { gte: startOfDay, lte: endOfDay },
+        consumed_at: { gte: startUtc, lte: endUtc },
       },
       include: { food: true },
     });
@@ -111,7 +121,7 @@ export const historyService = {
     const percentage = Math.round((totalCalories / targetCalories) * 100);
 
     return {
-      date: today.toISOString().split('T')[0],
+      date: userNow.toISOString().split('T')[0],
       totalCalories: Math.round(totalCalories),
       targetCalories,
       remaining: Math.round(remaining),

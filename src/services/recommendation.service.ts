@@ -2,6 +2,7 @@ import prisma from '../models/prisma.js';
 import { nutritionService } from './nutrition.service.js';
 import { generateId } from '../utils/idGenerator.js';
 import { notificationService } from './notification.service.js';
+import { randomUUID } from 'crypto';
 
 export const recommendationService = {
   async getRecommendations(userId: string, budget?: number, preference?: string) {
@@ -107,19 +108,9 @@ export const recommendationService = {
 
     const rec_id = await generateId('RECO', 'recommendations', 'rec_id');
 
-    // Generate unique IDs for each rec_food entry
-    // We need to get the starting number ONCE then increment manually,
-    // because generateId queries the DB — but none are committed yet in this batch.
-    const lastRcfd = await prisma.$queryRawUnsafe<Array<Record<string, string>>>(
-      `SELECT "rec_food_id" FROM "rec_foods" WHERE "rec_food_id" LIKE 'RCFD-%' ORDER BY "rec_food_id" DESC LIMIT 1`
-    );
-    let rcfdCounter = 1;
-    if (lastRcfd.length > 0) {
-      rcfdCounter = parseInt(lastRcfd[0].rec_food_id.split('-')[1], 10) + 1;
-    }
-
+    // Generate unique IDs for each rec_food entry using UUIDs (Bug #3 fix)
     const recFoodEntries = allSelectedFoods.map((food) => {
-      const rec_food_id = `RCFD-${String(rcfdCounter++).padStart(3, '0')}`;
+      const rec_food_id = `RCFD-${randomUUID().split('-')[0]}`;
       return { rec_food_id, food_id: food.food_id };
     });
 

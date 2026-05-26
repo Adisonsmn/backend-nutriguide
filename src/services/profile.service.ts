@@ -77,12 +77,17 @@ export const profileService = {
   },
 
   async upsertPreferences(userId: string, data: UpsertPreferencesData) {
+    // Bug #19: Only generate a new ID when creating, not when updating
+    const existing = await prisma.preference.findUnique({ where: { user_id: userId } });
+    if (existing) {
+      return prisma.preference.update({
+        where: { user_id: userId },
+        data,
+      });
+    }
     const pref_id = await generateId('PREF', 'preferences', 'pref_id');
-
-    return prisma.preference.upsert({
-      where: { user_id: userId },
-      update: data,
-      create: { pref_id, user_id: userId, ...data },
+    return prisma.preference.create({
+      data: { pref_id, user_id: userId, ...data },
     });
   },
 };

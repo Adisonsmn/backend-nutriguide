@@ -44,12 +44,14 @@ export const nutritionService = {
     const multiplier = ACTIVITY_MULTIPLIERS[activity] || ACTIVITY_MULTIPLIERS.moderate;
     const tdee = bmr * multiplier;
 
-    // Adjust for goal
+    // Adjust for goal — Bug #11: normalize goal to snake_case
     let dailyCalorieTarget: number;
-    switch (profile.goal.toLowerCase()) {
+    const normalizedGoal = profile.goal.toLowerCase().replace(/\s+/g, '_');
+    switch (normalizedGoal) {
       case 'lose_weight':
         dailyCalorieTarget = tdee - 500;
         break;
+      case 'build_muscle':
       case 'gain_weight':
         dailyCalorieTarget = tdee + 500;
         break;

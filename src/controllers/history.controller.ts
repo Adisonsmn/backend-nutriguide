@@ -68,7 +68,11 @@ export const historyController = {
   async getSummary(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
-      const summary = await historyService.getSummary(userId);
+      // Bug #28: Accept timezone offset from client
+      const timezoneOffset = req.query.timezoneOffset
+        ? parseInt(req.query.timezoneOffset as string, 10)
+        : undefined;
+      const summary = await historyService.getSummary(userId, timezoneOffset);
       res.status(200).json({
         status: 'success',
         message: 'Daily summary retrieved successfully',

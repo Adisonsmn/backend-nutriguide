@@ -7,8 +7,27 @@ import { notificationService } from './notification.service.js';
 
 const SALT_ROUNDS = 10;
 
-// In-memory refresh token store (use Redis in production)
-const refreshTokens = new Set<string>();
+/**
+ * Clean up expired sessions periodically (every hour).
+ * This replaces the unbounded in-memory Set (Bug #10).
+ */
+const startSessionCleanup = () => {
+  setInterval(async () => {
+    try {
+      const result = await prisma.session.deleteMany({
+        where: { expires_at: { lt: new Date() } },
+      });
+      if (result.count > 0) {
+        console.log(`[SessionCleanup] Removed ${result.count} expired sessions.`);
+      }
+    } catch (err) {
+      console.error('[SessionCleanup] Error:', err);
+    }
+  }, 60 * 60 * 1000); // Every hour
+};
+
+// Start cleanup on module load
+startSessionCleanup();
 
 export const authService = {
   async register(name: string, email: string, password: string) {
@@ -36,7 +55,19 @@ export const authService = {
   },
 
   async login(email: string, password: string) {
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Bug #24: Use explicit select so only needed fields are loaded
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: {
+        user_id: true,
+        name: true,
+        email: true,
+        is_active: true,
+        password_hash: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
     if (!user) {
       throw Object.assign(new Error('Email not registered'), { statusCode: 401 });
     }
@@ -56,9 +87,20 @@ export const authService = {
       expiresIn: (process.env.REFRESH_TOKEN_EXPIRE || '7d') as jwt.SignOptions['expiresIn'],
     } as jwt.SignOptions);
 
-    refreshTokens.add(refreshToken);
+    // Bug #5: Store hashed refresh token in the database instead of in-memory Set
+    const tokenHash = await bcrypt.hash(refreshToken, SALT_ROUNDS);
+    const sessionId = await generateId('SESS', 'sessions', 'session_id');
+    await prisma.session.create({
+      data: {
+        session_id: sessionId,
+        user_id: user.user_id,
+        token_hash: tokenHash,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    });
 
-    const { password_hash, ...userData } = user;
+    // Exclude password_hash from response
+    const { password_hash: _, ...userData } = user;
 
     // Fire-and-forget notification
     notificationService.createNotification(
@@ -68,32 +110,61 @@ export const authService = {
     return { accessToken, refreshToken, user: userData };
   },
 
-  async logout(refreshToken: string) {
-    refreshTokens.delete(refreshToken);
+  async logout(refreshToken: string, userId: string) {
+    // Bug #5: Delete the session from the database
+    // Find sessions for this user and check token hash
+    const sessions = await prisma.session.findMany({
+      where: { user_id: userId },
+    });
+
+    for (const session of sessions) {
+      const isMatch = await bcrypt.compare(refreshToken, session.token_hash);
+      if (isMatch) {
+        await prisma.session.delete({ where: { session_id: session.session_id } });
+        return;
+      }
+    }
+    // If no matching session found, silently succeed (token may have already been cleaned up)
   },
 
   async refreshAccessToken(refreshToken: string) {
-    if (!refreshTokens.has(refreshToken)) {
-      throw Object.assign(new Error('Invalid refresh token'), { statusCode: 401 });
-    }
-
+    // First verify the JWT itself is valid
+    let decoded: { userId: string; email: string };
     try {
-      const decoded = jwt.verify(
+      decoded = jwt.verify(
         refreshToken,
         process.env.JWT_REFRESH_SECRET as string
       ) as { userId: string; email: string };
-
-      const accessToken = jwt.sign(
-        { userId: decoded.userId, email: decoded.email },
-        process.env.JWT_SECRET as string,
-        { expiresIn: (process.env.ACCESS_TOKEN_EXPIRE || '15m') as jwt.SignOptions['expiresIn'] } as jwt.SignOptions
-      );
-
-      return { accessToken };
     } catch {
-      refreshTokens.delete(refreshToken);
       throw Object.assign(new Error('Invalid or expired refresh token'), { statusCode: 401 });
     }
+
+    // Bug #5: Check the refresh token against DB sessions
+    const sessions = await prisma.session.findMany({
+      where: { user_id: decoded.userId },
+    });
+
+    let matchedSession: typeof sessions[0] | null = null;
+    for (const session of sessions) {
+      if (session.expires_at < new Date()) continue; // Skip expired
+      const isMatch = await bcrypt.compare(refreshToken, session.token_hash);
+      if (isMatch) {
+        matchedSession = session;
+        break;
+      }
+    }
+
+    if (!matchedSession) {
+      throw Object.assign(new Error('Invalid refresh token'), { statusCode: 401 });
+    }
+
+    const accessToken = jwt.sign(
+      { userId: decoded.userId, email: decoded.email },
+      process.env.JWT_SECRET as string,
+      { expiresIn: (process.env.ACCESS_TOKEN_EXPIRE || '15m') as jwt.SignOptions['expiresIn'] } as jwt.SignOptions
+    );
+
+    return { accessToken };
   },
 
   async forgotPassword(email: string) {
@@ -120,8 +191,11 @@ export const authService = {
       return { message: 'OTP has been sent to your email address.' };
     } catch (emailError) {
       console.error('[ForgotPassword] Failed to send email:', emailError);
-      // Fallback: still return OTP for development/testing
-      return { otp, message: 'Email sending failed. OTP returned for development.' };
+      // Bug #1 fix: NEVER return the OTP to the client
+      throw Object.assign(
+        new Error('Failed to send OTP email. Please try again later.'),
+        { statusCode: 500 }
+      );
     }
   },
 
