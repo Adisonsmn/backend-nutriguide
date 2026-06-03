@@ -57,7 +57,35 @@ describe('history.service', () => {
       expect(notificationService.createNotification).toHaveBeenCalledWith(
         'USER-111',
         'history',
-        expect.stringContaining('Added "Banana" to your food history')
+        expect.stringContaining('Saved "Banana" to your food history')
+      );
+    });
+
+    it('should pass is_consumed to prisma and generate correct notification when consumed', async () => {
+      const mockFood = { food_id: 'FOOD-002', name: 'Apple', calories: 95 };
+      prismaMock.food.findUnique.mockResolvedValueOnce(mockFood as any);
+      prismaMock.foodHistory.create.mockResolvedValueOnce({
+        history_id: 'HIST-124',
+        user_id: 'USER-111',
+        food_id: 'FOOD-002',
+        qty_gram: 100,
+        is_consumed: true,
+        food: mockFood,
+      } as any);
+
+      const result = await historyService.addHistory('USER-111', 'FOOD-002', 100, undefined, true);
+
+      expect(result.history_id).toBe('HIST-124');
+      expect(prismaMock.foodHistory.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          is_consumed: true,
+        }),
+        include: { food: true },
+      });
+      expect(notificationService.createNotification).toHaveBeenCalledWith(
+        'USER-111',
+        'history',
+        expect.stringContaining('You consumed "Apple" — nutrition logged!')
       );
     });
   });
@@ -162,6 +190,14 @@ describe('history.service', () => {
 
       // timezone offset WIB = +420 mins
       const result = await historyService.getSummary('USER-111', 420);
+
+      expect(prismaMock.foodHistory.findMany).toHaveBeenCalledWith({
+        where: expect.objectContaining({
+          user_id: 'USER-111',
+          is_consumed: true,
+        }),
+        include: { food: true },
+      });
 
       expect(result.totalCalories).toBe(464);
       expect(result.targetCalories).toBe(2000);

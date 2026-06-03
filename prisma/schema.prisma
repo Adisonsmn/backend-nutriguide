@@ -106,6 +106,7 @@ model FoodHistory {
   food_id     String
   consumed_at DateTime @default(now())
   qty_gram    Float
+  is_consumed Boolean  @default(false)
 
   user User @relation(fields: [user_id], references: [user_id], onDelete: Cascade)
   food Food @relation(fields: [food_id], references: [food_id], onDelete: Cascade)

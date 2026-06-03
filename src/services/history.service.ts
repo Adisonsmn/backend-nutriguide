@@ -4,7 +4,7 @@ import { generateId } from '../utils/idGenerator.js';
 import { notificationService } from './notification.service.js';
 
 export const historyService = {
-  async addHistory(userId: string, foodId: string, qtyGram: number, consumedAt?: string) {
+  async addHistory(userId: string, foodId: string, qtyGram: number, consumedAt?: string, isConsumed: boolean = false) {
     // Verify food exists
     const food = await prisma.food.findUnique({ where: { food_id: foodId } });
     if (!food) {
@@ -20,12 +20,17 @@ export const historyService = {
         food_id: foodId,
         qty_gram: qtyGram,
         consumed_at: consumedAt ? new Date(consumedAt) : new Date(),
+        is_consumed: isConsumed,
       },
       include: { food: true },
     });
 
+    const notifMsg = isConsumed
+      ? `You consumed "${food.name}" — nutrition logged! 🍽️`
+      : `Saved "${food.name}" to your food history 📋`;
+    
     notificationService.createNotification(
-      userId, 'history', `Added "${food.name}" to your food history 🍽️`
+      userId, 'history', notifMsg
     ).catch(() => {});
 
     return entry;
@@ -91,6 +96,7 @@ export const historyService = {
       where: {
         user_id: userId,
         consumed_at: { gte: startUtc, lte: endUtc },
+        is_consumed: true,
       },
       include: { food: true },
     });

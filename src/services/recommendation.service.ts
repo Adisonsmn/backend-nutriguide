@@ -21,7 +21,7 @@ export const recommendationService = {
     const targetCalories = nutrition.dailyCalorieTarget;
 
     // Build food query filter — only filter by category, NOT by price
-    const effectiveBudget = budget || userPreference?.daily_budget;
+    const effectiveBudget = budget != null ? budget : userPreference?.daily_budget;
     const effectiveDietType = preference || userPreference?.diet_type;
 
     const whereClause: Record<string, unknown> = {};
@@ -64,7 +64,7 @@ export const recommendationService = {
 
     let totalCalories = 0;
     let totalSpending = 0;
-    const dailyBudget = effectiveBudget || Infinity;
+    const dailyBudget = effectiveBudget != null ? effectiveBudget : Infinity;
 
     // Track which foods have already been used so we don't repeat across meal slots
     const usedFoodIds = new Set<string>();

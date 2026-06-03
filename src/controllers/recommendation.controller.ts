@@ -5,7 +5,7 @@ export const recommendationController = {
   async getRecommendations(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
-      const budget = req.query.budget ? Number(req.query.budget) : undefined;
+      const budget = req.query.budget !== undefined ? Number(req.query.budget) : undefined;
       const preference = req.query.preference as string | undefined;
 
       const result = await recommendationService.getRecommendations(userId, budget, preference);

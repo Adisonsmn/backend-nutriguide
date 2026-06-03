@@ -5,8 +5,8 @@ export const historyController = {
   async addHistory(req: Request, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
-      const { food_id, qty_gram, consumed_at } = req.body;
-      const entry = await historyService.addHistory(userId, food_id, qty_gram, consumed_at);
+      const { food_id, qty_gram, consumed_at, is_consumed } = req.body;
+      const entry = await historyService.addHistory(userId, food_id, qty_gram, consumed_at, is_consumed ?? false);
       res.status(201).json({
         status: 'success',
         message: 'Food history added successfully',

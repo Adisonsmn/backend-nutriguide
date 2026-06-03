@@ -10,6 +10,7 @@ const addHistorySchema = z.object({
   food_id: z.string().min(1, 'Food ID is required'),
   qty_gram: z.number().positive('Quantity must be positive'),
   consumed_at: z.string().datetime().optional(),
+  is_consumed: z.boolean().optional().default(false),
 });
 
 router.post('/', verifyToken, validate(addHistorySchema), historyController.addHistory);

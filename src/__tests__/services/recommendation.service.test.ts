@@ -66,6 +66,22 @@ describe('recommendation.service', () => {
     );
   });
 
+  it('should return budget error message if budget is exactly 0', async () => {
+    prismaMock.profile.findUnique.mockResolvedValueOnce({ user_id: 'USER-111' } as any);
+    prismaMock.preference.findUnique.mockResolvedValueOnce(null);
+    prismaMock.food.findMany.mockResolvedValueOnce([
+      { food_id: 'FOOD-001', name: 'Expensive Steak', calories: 600, price_estimate: 100 },
+    ] as any);
+
+    const result = await recommendationService.getRecommendations('USER-111', 0);
+
+    expect(result.recommendation_id).toBeNull();
+    expect(result.total_calories).toBe(0);
+    expect(result.message).toBe(
+      'Could not find foods within your budget. Try increasing your daily budget.'
+    );
+  });
+
   it('should successfully build a meal plan and save it to the database', async () => {
     prismaMock.profile.findUnique.mockResolvedValueOnce({ user_id: 'USER-111' } as any);
     prismaMock.preference.findUnique.mockResolvedValueOnce({ daily_budget: 100, diet_type: 'vegan' } as any);
